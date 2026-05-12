@@ -22,12 +22,17 @@ GAME_HTML = """
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'Courier New',monospace; color:#0f0; }
-  canvas { border:2px solid #0f0; display:block; }
+  canvas { border:2px solid #0f0; display:block; outline:none; cursor:crosshair; }
   #ui { width:600px; display:flex; justify-content:space-between; padding:4px 0; font-size:14px; }
   #overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-             text-align:center; color:#0f0; font-family:'Courier New',monospace; pointer-events:none; }
+             text-align:center; color:#0f0; font-family:'Courier New',monospace;
+             cursor:pointer; z-index:10; }
   #overlay h1 { font-size:36px; text-shadow:0 0 10px #0f0; }
   #overlay p  { font-size:16px; margin-top:8px; }
+  #startBtn { margin-top:16px; padding:10px 28px; background:#0f0; color:#000;
+              border:none; font-family:'Courier New',monospace; font-size:16px;
+              font-weight:bold; cursor:pointer; border-radius:4px; }
+  #startBtn:hover { background:#0c0; }
 </style>
 </head>
 <body>
@@ -38,10 +43,11 @@ GAME_HTML = """
   <span>HI-SCORE: <span id="hiVal">0</span></span>
 </div>
 <div style="position:relative">
-  <canvas id="c" width="600" height="520"></canvas>
+  <canvas id="c" width="600" height="520" tabindex="0"></canvas>
   <div id="overlay">
     <h1>SPACE INVADERS</h1>
-    <p>← → to move &nbsp;|&nbsp; SPACE to shoot<br>Press SPACE or click to start</p>
+    <p>← → to move &nbsp;|&nbsp; SPACE to shoot</p>
+    <button id="startBtn" onclick="startGame()">▶ START GAME</button>
   </div>
 </div>
 
@@ -453,26 +459,37 @@ function draw() {
 }
 
 // ── Overlay helper ───────────────────────────────────────────────────────────
-function showOverlay(title, sub) {
-  overlay.innerHTML = `<h1>${title}</h1><p>${sub}</p>`;
+function showOverlay(title, sub, btnLabel='▶ PLAY AGAIN') {
+  overlay.innerHTML = `<h1>${title}</h1><p>${sub}</p>
+    <button id="startBtn" style="margin-top:16px;padding:10px 28px;background:#0f0;color:#000;
+    border:none;font-family:'Courier New',monospace;font-size:16px;font-weight:bold;
+    cursor:pointer;border-radius:4px;" onclick="startGame()">${btnLabel}</button>`;
   overlay.style.display = 'block';
 }
 function hideOverlay() { overlay.style.display = 'none'; }
 
+function startGame() {
+  hideOverlay();
+  if (gameState === 'title' || gameState === 'over') init();
+  gameState = 'playing';
+  canvas.focus();          // ← grab keyboard focus inside the iframe
+}
+
 // ── Input ─────────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   keys[e.key] = true;
-  if (e.key === ' ') {
+  if (e.key === ' ' || e.key === 'Enter') {
     e.preventDefault();
-    if (gameState === 'title') { hideOverlay(); init(); gameState = 'playing'; }
-    else if (gameState === 'over') { hideOverlay(); init(); gameState = 'playing'; }
+    if (gameState === 'title' || gameState === 'over') startGame();
   }
 });
 document.addEventListener('keyup', e => { keys[e.key] = false; });
-canvas.addEventListener('click', () => {
-  if (gameState === 'title') { hideOverlay(); init(); gameState = 'playing'; }
-  else if (gameState === 'over') { hideOverlay(); init(); gameState = 'playing'; }
-});
+
+// Click on canvas during play → keep focus
+canvas.addEventListener('click', () => canvas.focus());
+
+// Auto-focus canvas 300ms after load so keyboard works immediately
+window.addEventListener('load', () => setTimeout(() => canvas.focus(), 300));
 
 // ── Loop ─────────────────────────────────────────────────────────────────────
 function loop() {
